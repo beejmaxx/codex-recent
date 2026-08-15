@@ -61,4 +61,3 @@ from the selected conversation's saved working directory.
 ## License
 
 [MIT](LICENSE)
-
