@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: codex-recent [COUNT] [--hours HOURS] [--list] [--all-sources]
+
+Interactively select and resume a recent Codex conversation.
+COUNT defaults to 20. Press Enter to resume; press Esc to cancel.
+
+Options:
+  -l, --list          Print conversations instead of opening the picker.
+  -p, --pick          Open the picker (the default; retained for compatibility).
+      --hours HOURS   Only include conversations active within the last HOURS.
+      --all-sources   Also show subagent and non-interactive sessions.
+  -h, --help          Show this help.
+
+Examples:
+  codex-recent
+  codex-recent 10
+  codex-recent 25 --list
+  codex-recent 10 --hours 24
+EOF
+}
+
+limit=20
+limit_was_set=0
+hours=""
+pick=1
+all_sources=0
+
+while (($#)); do
+  case "$1" in
+    -p|--pick)
+      pick=1
+      ;;
+    -l|--list)
+      pick=0
+      ;;
+    --hours)
+      shift
+      if (($# == 0)); then
+        printf 'codex-recent: --hours requires a value\n' >&2
+        exit 2
+      fi
+      hours=$1
+      ;;
+    --all-sources)
+      all_sources=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -* )
+      printf 'codex-recent: unknown option: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if ((limit_was_set)); then
+        printf 'codex-recent: unexpected argument: %s\n' "$1" >&2
+        usage >&2
+        exit 2
+      fi
+      limit=$1
+      limit_was_set=1
+      ;;
+  esac
+  shift
+done
+
+if (($#)); then
+  printf 'codex-recent: unexpected argument: %s\n' "$1" >&2
+  usage >&2
+  exit 2
+fi
+
+if [[ ! "$limit" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'codex-recent: COUNT must be a positive integer\n' >&2
+  exit 2
+fi
+
+if [[ -n "$hours" ]] && { [[ ! "$hours" =~ ^[0-9]+([.][0-9]+)?$ ]] || [[ ! "$hours" =~ [1-9] ]]; }; then
+  printf 'codex-recent: HOURS must be a positive number\n' >&2
+  exit 2
+fi
+
+if ! command -v sqlite3 >/dev/null 2>&1; then
+  printf 'codex-recent: sqlite3 is required\n' >&2
+  exit 1
+fi
+
+codex_data_dir=${CODEX_HOME:-${HOME}/.codex}
+database="$codex_data_dir/state_5.sqlite"
+
+# Fall back to the newest state database if a future Codex release changes
+# the state schema's versioned filename.
+if [[ ! -f "$database" ]]; then
+  database=""
+  for candidate in "$codex_data_dir"/state_*.sqlite; do
+    [[ -f "$candidate" ]] || continue
+    if [[ -z "$database" || "$candidate" -nt "$database" ]]; then
+      database=$candidate
+    fi
+  done
+fi
+
+if [[ -z "$database" || ! -f "$database" ]]; then
+  printf 'codex-recent: no Codex state database found under %s\n' "$codex_data_dir" >&2
+  exit 1
+fi
+
+if [[ "$(sqlite3 -readonly "$database" "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='threads';")" != "1" ]]; then
+  printf 'codex-recent: %s does not contain the expected threads table\n' "$database" >&2
+  exit 1
+fi
+
+source_filter="AND source NOT LIKE '%\"subagent\"%' AND source NOT IN ('exec', 'mcp')"
+if ((all_sources)); then
+  source_filter=""
+fi
+
+time_filter=""
+if [[ -n "$hours" ]]; then
+  time_filter="AND updated_at >= CAST(strftime('%s', 'now', '-${hours} hours') AS INTEGER)"
+fi
+
+query() {
+  sqlite3 -readonly -separator $'\t' "$database" <<SQL
+SELECT
+  strftime('%Y-%m-%d %H:%M', created_at, 'unixepoch', 'localtime'),
+  strftime('%Y-%m-%d %H:%M', updated_at, 'unixepoch', 'localtime'),
+  CASE
+    WHEN CAST(strftime('%s', 'now') AS INTEGER) - updated_at < 60
+      THEN 'just now'
+    WHEN CAST(strftime('%s', 'now') AS INTEGER) - updated_at < 3600
+      THEN printf('%dm ago', (CAST(strftime('%s', 'now') AS INTEGER) - updated_at) / 60)
+    WHEN CAST(strftime('%s', 'now') AS INTEGER) - updated_at < 86400
+      THEN printf('%dh ago', (CAST(strftime('%s', 'now') AS INTEGER) - updated_at) / 3600)
+    WHEN CAST(strftime('%s', 'now') AS INTEGER) - updated_at < 604800
+      THEN printf('%dd ago', (CAST(strftime('%s', 'now') AS INTEGER) - updated_at) / 86400)
+    ELSE strftime('%Y-%m-%d', updated_at, 'unixepoch', 'localtime')
+  END,
+  replace(replace(replace(cwd, char(9), ' '), char(10), ' '), char(13), ' '),
+  replace(replace(replace(
+    COALESCE(NULLIF(name, ''), NULLIF(title, ''), NULLIF(first_user_message, ''), '(untitled)'),
+    char(9), ' '), char(10), ' '), char(13), ' '),
+  CASE WHEN source LIKE '%"subagent"%' THEN 'subagent' ELSE source END,
+  id
+FROM threads
+WHERE 1 = 1
+  $time_filter
+  $source_filter
+ORDER BY updated_at DESC, id DESC
+LIMIT $limit;
+SQL
+}
+
+format_for_picker() {
+  local started updated last_used cwd title source id display_cwd
+  while IFS=$'\t' read -r started updated last_used cwd title source id; do
+    [[ -n "$id" ]] || continue
+    display_cwd=$cwd
+    if [[ "$display_cwd" == "$HOME" ]]; then
+      display_cwd='~'
+    elif [[ "$display_cwd" == "$HOME/"* ]]; then
+      display_cwd="~/${display_cwd#"$HOME/"}"
+    fi
+
+    # Keep the raw fields for resume/preview, and append one aligned display field.
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%-9.9s  %-34.34s  %s\n' \
+      "$started" "$updated" "$last_used" "$cwd" "$title" "$source" "$id" \
+      "$last_used" "$display_cwd" "$title"
+  done
+}
+
+if ((pick)); then
+  if ! command -v fzf >/dev/null 2>&1; then
+    printf 'codex-recent: the interactive picker requires fzf (use --list for plain output)\n' >&2
+    exit 1
+  fi
+
+  selection=$(query | format_for_picker | fzf \
+    --delimiter=$'\t' \
+    --with-nth=8 \
+    --header=$'WHEN       PROJECT / DIRECTORY                 CONVERSATION\n↑/k ↓/j: move   Enter: resume   Esc: cancel' \
+    --prompt="Recent (${limit})  " \
+    --pointer='▸' \
+    --marker='✓' \
+    --height=80% \
+    --layout=reverse \
+    --border \
+    --cycle \
+    --info=inline \
+    --bind='j:down,k:up,ctrl-j:down,ctrl-k:up' \
+    --preview=$'printf \'Last used: %s\\nExact time: %s\\nStarted:   %s\\nDirectory: %s\\nSource:    %s\\n\\n%s\\n\' {3} {2} {1} {4} {6} {5}' \
+    --preview-window='down,7,wrap' \
+    --no-multi) || exit 0
+
+  IFS=$'\t' read -r started updated last_used cwd title source id display <<< "$selection"
+  if [[ ! -d "$cwd" ]]; then
+    printf 'codex-recent: original directory no longer exists: %s\n' "$cwd" >&2
+    exit 1
+  fi
+
+  printf 'Resuming %s from %s\n' "$id" "$cwd"
+  cd "$cwd"
+  exec codex resume "$id"
+fi
+
+if [[ -n "$hours" ]]; then
+  printf 'Latest %s Codex conversations active in the last %s hours\n\n' "$limit" "$hours"
+else
+  printf 'Latest %s active Codex conversations\n\n' "$limit"
+fi
+count=0
+while IFS=$'\t' read -r started updated last_used cwd title source id; do
+  [[ -n "$id" ]] || continue
+  count=$((count + 1))
+  printf '%s (%s)  %s\n' "$updated" "$last_used" "$cwd"
+  printf '  %s\n' "$title"
+  printf '  %s · started %s · %s\n\n' "$source" "$started" "$id"
+done < <(query)
+
+if ((count == 0)); then
+  printf 'No conversations found. Try a larger COUNT, a wider --hours value, or --all-sources.\n'
+else
+  printf '%d conversation%s found. Run without --list to select and resume one.\n' \
+    "$count" "$([[ $count -eq 1 ]] || printf 's')"
+fi
