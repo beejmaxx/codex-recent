@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">codex-recent interactive conversation picker</title>
+  <desc id="desc">A terminal showing recent Codex conversations with fuzzy search, Vim navigation, last-used times, and a session preview.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#020617" flood-opacity="0.42"/>
+    </filter>
+    <clipPath id="terminal-clip">
+      <rect x="44" y="44" width="1312" height="732" rx="16"/>
+    </clipPath>
+    <style>
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+      .muted { fill: #94a3b8; }
+      .text { fill: #d7e0ea; }
+      .accent { fill: #67e8f9; }
+      .green { fill: #86efac; }
+      .gold { fill: #fde68a; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="820" fill="#07111f"/>
+  <circle cx="1260" cy="90" r="260" fill="#164e63" opacity="0.20"/>
+  <circle cx="120" cy="760" r="300" fill="#312e81" opacity="0.18"/>
+
+  <g filter="url(#shadow)">
+    <rect x="44" y="44" width="1312" height="732" rx="16" fill="#0f1f2b" stroke="#334155" stroke-width="2"/>
+    <rect x="44" y="44" width="1312" height="48" rx="16" fill="#172b38"/>
+    <rect x="44" y="76" width="1312" height="16" fill="#172b38"/>
+    <circle cx="76" cy="68" r="7" fill="#fb7185"/>
+    <circle cx="100" cy="68" r="7" fill="#fbbf24"/>
+    <circle cx="124" cy="68" r="7" fill="#4ade80"/>
+    <text x="700" y="75" text-anchor="middle" class="mono muted" font-size="15">codex-recent — zsh</text>
+  </g>
+
+  <g clip-path="url(#terminal-clip)" class="mono">
+    <text x="72" y="130" class="green" font-size="19">alex@studio</text>
+    <text x="204" y="130" class="accent" font-size="19">~/code/product</text>
+    <text x="382" y="130" class="muted" font-size="19">$</text>
+    <text x="406" y="130" class="text" font-size="19">codex-recent</text>
+
+    <rect x="64" y="158" width="1272" height="582" rx="10" fill="#112633" stroke="#3b5361" stroke-width="1.5"/>
+
+    <text x="88" y="196" class="text" font-size="20" font-weight="700">Recent (20)</text>
+    <rect x="224" y="178" width="2" height="23" fill="#67e8f9"/>
+    <text x="244" y="196" class="muted" font-size="16">20/20</text>
+    <line x1="312" y1="190" x2="1308" y2="190" stroke="#3b5361"/>
+
+    <text x="88" y="232" class="muted" font-size="15" letter-spacing="1">WHEN       PROJECT / DIRECTORY                 CONVERSATION</text>
+    <text x="88" y="260" class="muted" font-size="15">↑/k ↓/j: move   Enter: resume   Esc: cancel</text>
+
+    <text x="98" y="300" class="text" font-size="18">just now   ~/code/atlas                       Ship the onboarding polish</text>
+    <text x="98" y="334" class="text" font-size="18">12m ago    ~/code/api                         Add cursor pagination to search</text>
+
+    <rect x="76" y="350" width="1248" height="40" rx="5" fill="#24495a"/>
+    <text x="88" y="377" class="accent" font-size="21" font-weight="700">▸</text>
+    <text x="116" y="377" class="gold" font-size="18" font-weight="700">35m ago</text>
+    <text x="224" y="377" class="text" font-size="18" font-weight="700">~/code/design-system</text>
+    <text x="620" y="377" class="text" font-size="18" font-weight="700">Build an accessible command palette</text>
+
+    <text x="98" y="422" class="text" font-size="18">1h ago     ~/code/mobile                      Diagnose flaky integration tests</text>
+    <text x="98" y="456" class="text" font-size="18">3h ago     ~/notes/research                   Compare local-first sync approaches</text>
+    <text x="98" y="490" class="text" font-size="18">yesterday  ~/code/cli                         Improve the release workflow</text>
+
+    <rect x="76" y="520" width="1248" height="196" rx="7" fill="#0d202b" stroke="#3b5361"/>
+    <text x="96" y="554" class="muted" font-size="16">LAST USED</text>
+    <text x="244" y="554" class="text" font-size="16">35m ago · 2026-08-18 09:42</text>
+    <text x="96" y="584" class="muted" font-size="16">STARTED</text>
+    <text x="244" y="584" class="text" font-size="16">2026-08-18 08:17</text>
+    <text x="96" y="614" class="muted" font-size="16">DIRECTORY</text>
+    <text x="244" y="614" class="text" font-size="16">/Users/alex/code/design-system</text>
+    <text x="96" y="644" class="muted" font-size="16">SOURCE</text>
+    <text x="244" y="644" class="text" font-size="16">cli</text>
+    <line x1="96" y1="666" x2="1304" y2="666" stroke="#2f4856"/>
+    <text x="96" y="697" class="text" font-size="17">Build an accessible command palette with keyboard navigation and fuzzy search.</text>
+  </g>
+</svg>
