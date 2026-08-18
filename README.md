@@ -1,18 +1,22 @@
 # codex-recent
 
-An `fzf` picker for finding and resuming recent [Codex CLI](https://developers.openai.com/codex/cli/) conversations across working directories.
+**Jump back into any Codex conversation in seconds.**
 
-It reads Codex's local SQLite state in read-only mode, orders conversations by their last activity, and resumes the selected session in its original directory.
+`codex-recent` is a fast, keyboard-first `fzf` picker for every [Codex CLI](https://developers.openai.com/codex/cli/) conversation on your machine—across projects and working directories.
 
-## Features
+![codex-recent showing a searchable list of conversations, last-used times, and a session preview](assets/demo.svg)
 
-- Fuzzy selection across recent conversations
-- Relative and exact last-used timestamps
-- Vim-style `j` / `k` navigation (arrow keys also work)
-- Conversation details in a preview pane
-- Resume from the conversation's original working directory
-- Filters by count, age, and session source
-- Plain-text output for scripts
+Codex remembers your sessions. `codex-recent` makes them feel instantly reachable: fuzzy-find the conversation you want, press Enter, and continue exactly where you left off in its original directory.
+
+No cloud service, account integration, or new database. It reads Codex's existing local state in read-only mode and hands the selected session straight back to `codex resume`.
+
+## Why you'll want it
+
+- **One picker for every project.** Stop hunting through directories for the conversation you need.
+- **Recency at a glance.** See when each session was last active, with exact timestamps in the preview.
+- **Stay on the keyboard.** Search with `fzf`, move with arrows or `j` / `k`, and resume with Enter.
+- **Resume in context.** Every session reopens from the working directory where it started.
+- **Local and lightweight.** One Bash script, one read-only SQLite query, no background process.
 
 ## Requirements
 
